@@ -22,6 +22,11 @@ export interface AppConfig {
   scraperApiKey?: string;
   sendgridApiKey?: string;
   sendgridFromEmail?: string;
+  smtpHost?: string;
+  smtpPort: number;
+  smtpUser?: string;
+  smtpPass?: string;
+  smtpFromEmail?: string;
   saleSeasonWindowDays: number;
 }
 
@@ -37,5 +42,10 @@ export const config: AppConfig = {
   scraperApiKey: process.env.SCRAPERAPI_KEY,
   sendgridApiKey: process.env.SENDGRID_API_KEY,
   sendgridFromEmail: process.env.SENDGRID_FROM_EMAIL,
+  smtpHost: process.env.SMTP_HOST,
+  smtpPort: parseInteger(process.env.SMTP_PORT, 587),
+  smtpUser: process.env.SMTP_USER,
+  smtpPass: process.env.SMTP_PASS,
+  smtpFromEmail: process.env.SMTP_FROM_EMAIL,
   saleSeasonWindowDays: parseInteger(process.env.SALE_SEASON_WINDOW_DAYS, 10)
 };

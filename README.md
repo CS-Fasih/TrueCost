@@ -24,7 +24,7 @@ TrueCost can run in a no-paid-provider production mode:
 - `FREE_PROVIDERS=true` uses direct product-page fetching for current price snapshots.
 - Price history is built from saved PostgreSQL snapshots over time.
 - Cross-retailer comparison falls back to retailer search links instead of paid Google Shopping results.
-- SendGrid is optional; alerts are stored either way, but emails are only sent when SendGrid is configured.
+- SendGrid is optional; alerts can also send through SMTP, or log skipped sends when no sender is configured.
 
 Free mode is useful for production demos and low-cost deployments, but retailers may block direct server-side requests. Paid APIs are still more reliable for live history and comparison data.
 
@@ -42,6 +42,11 @@ SERPAPI_API_KEY=...
 SCRAPERAPI_KEY=...
 SENDGRID_API_KEY=...
 SENDGRID_FROM_EMAIL=alerts@example.com
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=...
+SMTP_PASS=...
+SMTP_FROM_EMAIL=alerts@example.com
 SALE_SEASON_WINDOW_DAYS=10
 ```
 
@@ -123,6 +128,18 @@ heroku config:set \
   -a pricelens-api
 ```
 
+Optional free/low-cost SMTP alert email config:
+
+```bash
+heroku config:set \
+  SMTP_HOST=smtp.gmail.com \
+  SMTP_PORT=587 \
+  SMTP_USER=replace-me \
+  SMTP_PASS=replace-me \
+  SMTP_FROM_EMAIL=alerts@example.com \
+  -a pricelens-api
+```
+
 Frontend setup:
 
 ```bash
@@ -153,5 +170,5 @@ npm run alerts:check
 - Amazon history uses Keepa when `KEEPA_API_KEY` is configured; otherwise free mode stores direct snapshots over time.
 - Shopee, Lazada, and Flipkart use ScraperAPI when configured; otherwise free mode attempts direct page snapshots.
 - SerpApi powers live Google Shopping prices when configured; otherwise comparison links open retailer searches.
-- SendGrid sends alerts once a product drops to or below the saved target price; without SendGrid, the alert checker logs skipped sends.
+- SendGrid or SMTP sends alerts once a product drops to or below the saved target price; without either sender, the alert checker logs skipped sends.
 - Heroku Procfiles and buildpacks follow Heroku Dev Center Procfile/buildpack guidance and the Vite static deployment pattern.
