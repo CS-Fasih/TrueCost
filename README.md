@@ -106,12 +106,14 @@ git subtree push --prefix backend heroku-api main
 Frontend setup:
 
 ```bash
+heroku stack:set heroku-24 -a pricelens-app
 heroku buildpacks:clear -a pricelens-app
 heroku buildpacks:add heroku/nodejs -a pricelens-app
-heroku buildpacks:add heroku-community/static -a pricelens-app
 heroku config:set VITE_API_URL=https://pricelens-api-e6983572b5c4.herokuapp.com -a pricelens-app
 git subtree push --prefix frontend heroku-frontend main
 ```
+
+The frontend still builds to static Vite assets in `dist/`. Heroku's deprecated `heroku-community/static` buildpack currently rejects the available `heroku-22` and `heroku-24` stacks, so the deployed app uses the official Node buildpack with `serve` to host the static build.
 
 Heroku Scheduler:
 
