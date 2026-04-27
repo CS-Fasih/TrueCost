@@ -108,6 +108,25 @@ export class PgStore implements Store {
       ALTER TABLE alerts ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
       ALTER TABLE alerts ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
       ALTER TABLE alerts ADD COLUMN IF NOT EXISTS last_notified_at TIMESTAMPTZ;
+
+      DO $$
+      DECLARE column_record record;
+      BEGIN
+        FOR column_record IN
+          SELECT table_name, column_name
+          FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name IN ('products', 'price_snapshots', 'retailer_offers', 'alerts')
+            AND is_nullable = 'NO'
+            AND column_name <> 'id'
+        LOOP
+          EXECUTE format(
+            'ALTER TABLE %I ALTER COLUMN %I DROP NOT NULL',
+            column_record.table_name,
+            column_record.column_name
+          );
+        END LOOP;
+      END $$;
     `);
   }
 
