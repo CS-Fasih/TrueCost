@@ -87,6 +87,8 @@ export class PgStore implements Store {
       ALTER TABLE price_snapshots ADD COLUMN IF NOT EXISTS source TEXT DEFAULT 'unknown';
       ALTER TABLE price_snapshots ADD COLUMN IF NOT EXISTS observed_at TIMESTAMPTZ DEFAULT NOW();
       ALTER TABLE price_snapshots ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}'::jsonb;
+      ALTER TABLE price_snapshots DROP CONSTRAINT IF EXISTS idx_price_snapshots_unique_point;
+      DROP INDEX IF EXISTS idx_price_snapshots_unique_point;
       CREATE INDEX IF NOT EXISTS price_snapshots_product_observed_idx
         ON price_snapshots(product_id, observed_at);
 
