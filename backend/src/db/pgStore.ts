@@ -44,9 +44,6 @@ export class PgStore implements Store {
         metadata JSONB NOT NULL DEFAULT '{}'::jsonb
       );
 
-      CREATE UNIQUE INDEX IF NOT EXISTS price_snapshots_product_observed_source_key
-        ON price_snapshots(product_id, observed_at, source);
-
       CREATE TABLE IF NOT EXISTS retailer_offers (
         id BIGSERIAL PRIMARY KEY,
         product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
@@ -69,6 +66,48 @@ export class PgStore implements Store {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         last_notified_at TIMESTAMPTZ
       );
+
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS id TEXT;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS site TEXT;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS source_url TEXT;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS external_id TEXT;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS name TEXT;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url TEXT;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS current_price NUMERIC(12,2);
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'USD';
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS is_demo BOOLEAN DEFAULT false;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+      CREATE UNIQUE INDEX IF NOT EXISTS products_id_key ON products(id);
+
+      ALTER TABLE price_snapshots ADD COLUMN IF NOT EXISTS id BIGSERIAL;
+      ALTER TABLE price_snapshots ADD COLUMN IF NOT EXISTS product_id TEXT;
+      ALTER TABLE price_snapshots ADD COLUMN IF NOT EXISTS price NUMERIC(12,2);
+      ALTER TABLE price_snapshots ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'USD';
+      ALTER TABLE price_snapshots ADD COLUMN IF NOT EXISTS source TEXT DEFAULT 'unknown';
+      ALTER TABLE price_snapshots ADD COLUMN IF NOT EXISTS observed_at TIMESTAMPTZ DEFAULT NOW();
+      ALTER TABLE price_snapshots ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}'::jsonb;
+      CREATE INDEX IF NOT EXISTS price_snapshots_product_observed_idx
+        ON price_snapshots(product_id, observed_at);
+
+      ALTER TABLE retailer_offers ADD COLUMN IF NOT EXISTS id BIGSERIAL;
+      ALTER TABLE retailer_offers ADD COLUMN IF NOT EXISTS product_id TEXT;
+      ALTER TABLE retailer_offers ADD COLUMN IF NOT EXISTS retailer TEXT;
+      ALTER TABLE retailer_offers ADD COLUMN IF NOT EXISTS title TEXT;
+      ALTER TABLE retailer_offers ADD COLUMN IF NOT EXISTS price NUMERIC(12,2);
+      ALTER TABLE retailer_offers ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'USD';
+      ALTER TABLE retailer_offers ADD COLUMN IF NOT EXISTS url TEXT;
+      ALTER TABLE retailer_offers ADD COLUMN IF NOT EXISTS image_url TEXT;
+      ALTER TABLE retailer_offers ADD COLUMN IF NOT EXISTS fetched_at TIMESTAMPTZ DEFAULT NOW();
+
+      ALTER TABLE alerts ADD COLUMN IF NOT EXISTS id BIGSERIAL;
+      ALTER TABLE alerts ADD COLUMN IF NOT EXISTS product_id TEXT;
+      ALTER TABLE alerts ADD COLUMN IF NOT EXISTS email TEXT;
+      ALTER TABLE alerts ADD COLUMN IF NOT EXISTS target_price NUMERIC(12,2);
+      ALTER TABLE alerts ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'USD';
+      ALTER TABLE alerts ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+      ALTER TABLE alerts ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+      ALTER TABLE alerts ADD COLUMN IF NOT EXISTS last_notified_at TIMESTAMPTZ;
     `);
   }
 
@@ -85,9 +124,11 @@ export class PgStore implements Store {
         await client.query(
           `
           INSERT INTO price_snapshots (product_id, price, currency, source, observed_at)
-          VALUES ($1, $2, $3, $4, $5)
-          ON CONFLICT (product_id, observed_at, source)
-          DO UPDATE SET price = EXCLUDED.price, currency = EXCLUDED.currency
+          SELECT $1, $2, $3, $4, $5
+          WHERE NOT EXISTS (
+            SELECT 1 FROM price_snapshots
+            WHERE product_id = $1 AND source = $4 AND observed_at = $5
+          )
           `,
           [product.id, point.price, point.currency, point.source, point.observedAt]
         );
