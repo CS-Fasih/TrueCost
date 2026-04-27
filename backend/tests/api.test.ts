@@ -9,6 +9,7 @@ const testConfig: AppConfig = {
   nodeEnv: "test",
   clientOrigin: "http://localhost:5173",
   demoFallback: true,
+  freeProviders: false,
   saleSeasonWindowDays: 10
 };
 

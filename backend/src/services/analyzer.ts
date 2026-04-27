@@ -6,7 +6,9 @@ import { computeVerdict } from "./verdict";
 import { fetchAmazonProduct } from "../providers/keepa";
 import { fetchMarketplaceProduct } from "../providers/scraper";
 import { fetchShoppingOffers } from "../providers/serpapi";
-import type { AnalyzeResponse, PricePoint, ProductRecord, ProviderProductResult } from "../types";
+import { fetchFreeProductSnapshot } from "../providers/freePage";
+import { buildFreeSearchOffers } from "../providers/freeComparison";
+import type { AnalyzeResponse, PricePoint, ProductRecord, ProviderProductResult, RetailerOffer } from "../types";
 import { parseProductUrl, productIdFromParsed } from "../utils/urlParser";
 
 const byObservedAt = (a: PricePoint, b: PricePoint) =>
@@ -36,29 +38,50 @@ export class Analyzer {
     const messages: string[] = [];
     let isDemo = false;
     let productResult: ProviderProductResult;
+    let attemptedFreeProvider = false;
 
     try {
-      productResult =
-        parsed.site === "amazon"
-          ? await fetchAmazonProduct(parsed, this.appConfig)
-          : await fetchMarketplaceProduct(parsed, this.appConfig);
+      if (parsed.site === "amazon" && this.appConfig.keepaApiKey) {
+        productResult = await fetchAmazonProduct(parsed, this.appConfig);
+      } else if (parsed.site !== "amazon" && this.appConfig.scraperApiKey) {
+        productResult = await fetchMarketplaceProduct(parsed, this.appConfig);
+      } else if (this.appConfig.freeProviders) {
+        attemptedFreeProvider = true;
+        productResult = await fetchFreeProductSnapshot(parsed);
+      } else {
+        throw new AppError(503, "PROVIDER_NOT_CONFIGURED", "No free or paid product data provider is configured.");
+      }
     } catch (error) {
-      if (!this.appConfig.demoFallback) throw error;
-      productResult = buildDemoProductResult(parsed);
-      isDemo = true;
-      messages.push(error instanceof Error ? error.message : "Live provider failed; using demo data.");
+      if (this.appConfig.freeProviders && !attemptedFreeProvider) {
+        try {
+          productResult = await fetchFreeProductSnapshot(parsed);
+          messages.push("Paid provider failed, so TrueCost used the free direct page fetch instead.");
+        } catch (freeError) {
+          if (!this.appConfig.demoFallback) throw freeError;
+          productResult = buildDemoProductResult(parsed);
+          isDemo = true;
+          messages.push(freeError instanceof Error ? freeError.message : "Free provider failed; using demo data.");
+        }
+      } else {
+        if (!this.appConfig.demoFallback) throw error;
+        productResult = buildDemoProductResult(parsed);
+        isDemo = true;
+        messages.push(error instanceof Error ? error.message : "Live provider failed; using demo data.");
+      }
     }
 
-    let offers = [];
+    let offers: RetailerOffer[] = [];
     try {
       offers = await fetchShoppingOffers(productResult.name, productResult.currency, this.appConfig);
     } catch (error) {
-      if (!this.appConfig.demoFallback) {
-        messages.push(error instanceof Error ? error.message : "Comparison prices are unavailable.");
-      }
-      offers = buildDemoOffers(productResult.name, productResult.currency, productResult.currentPrice);
-      if (this.appConfig.demoFallback) {
+      if (this.appConfig.freeProviders) {
+        offers = buildFreeSearchOffers(productResult.name);
+        messages.push("Free comparison mode opens retailer searches instead of paid live shopping results.");
+      } else if (this.appConfig.demoFallback) {
+        offers = buildDemoOffers(productResult.name, productResult.currency, productResult.currentPrice);
         messages.push("Using demo comparison offers because SerpApi is not configured or failed.");
+      } else {
+        messages.push(error instanceof Error ? error.message : "Comparison prices are unavailable.");
       }
     }
 
@@ -78,7 +101,7 @@ export class Analyzer {
     };
 
     const incomingHistory =
-      parsed.site === "amazon" && productResult.history.length > 1
+      parsed.site === "amazon" && productResult.history.length > 1 && productResult.source === "keepa"
         ? productResult.history
         : mergeHistory(existing?.history ?? [], productResult.history);
 

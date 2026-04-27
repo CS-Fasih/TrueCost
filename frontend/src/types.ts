@@ -24,8 +24,8 @@ export interface PricePoint {
 export interface RetailerOffer {
   retailer: string;
   title: string;
-  price: number;
-  currency: string;
+  price?: number | null;
+  currency?: string | null;
   url: string;
   imageUrl?: string | null;
   fetchedAt: string;

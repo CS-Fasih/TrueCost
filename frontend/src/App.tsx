@@ -443,6 +443,13 @@ function InsightPanel({ analysis }: { analysis: AnalysisResponse }) {
 }
 
 function ComparisonTable({ offers, currency }: { offers: RetailerOffer[]; currency: string }) {
+  const priceText = (offer: RetailerOffer) => {
+    if (typeof offer.price === "number" && Number.isFinite(offer.price)) {
+      return formatMoney(offer.currency || currency, offer.price);
+    }
+    return "Open retailer search";
+  };
+
   return (
     <section className="glass rounded-lg p-5 sm:p-6">
       <div className="mb-5 flex items-center gap-3">
@@ -465,7 +472,7 @@ function ComparisonTable({ offers, currency }: { offers: RetailerOffer[]; curren
                 <tr key={`${offer.retailer}-${offer.url}`} className="bg-white/[0.03] text-sm">
                   <td className="rounded-l-lg px-4 py-4 font-semibold text-white">{offer.retailer}</td>
                   <td className="max-w-sm px-4 py-4 text-slate-300">{offer.title}</td>
-                  <td className="px-4 py-4 font-semibold text-white">{formatMoney(offer.currency || currency, offer.price)}</td>
+                  <td className="px-4 py-4 font-semibold text-white">{priceText(offer)}</td>
                   <td className="rounded-r-lg px-4 py-4">
                     <a
                       href={offer.url}

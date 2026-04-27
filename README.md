@@ -17,7 +17,18 @@ backend/   Express API, provider integrations, database stores, alert job
 frontend/  Vite React app, Tailwind UI, charts, static Heroku config
 ```
 
-## Required API Keys
+## Production Modes
+
+TrueCost can run in a no-paid-provider production mode:
+
+- `FREE_PROVIDERS=true` uses direct product-page fetching for current price snapshots.
+- Price history is built from saved PostgreSQL snapshots over time.
+- Cross-retailer comparison falls back to retailer search links instead of paid Google Shopping results.
+- SendGrid is optional; alerts are stored either way, but emails are only sent when SendGrid is configured.
+
+Free mode is useful for production demos and low-cost deployments, but retailers may block direct server-side requests. Paid APIs are still more reliable for live history and comparison data.
+
+## Environment Variables
 
 Backend config vars:
 
@@ -25,6 +36,7 @@ Backend config vars:
 DATABASE_URL=...
 CLIENT_ORIGIN=http://localhost:5173
 DEMO_FALLBACK=true
+FREE_PROVIDERS=true
 KEEPA_API_KEY=...
 SERPAPI_API_KEY=...
 SCRAPERAPI_KEY=...
@@ -39,7 +51,7 @@ Frontend config vars:
 VITE_API_URL=https://pricelens-api-e6983572b5c4.herokuapp.com
 ```
 
-`DEMO_FALLBACK=true` keeps the app usable without paid provider keys by returning deterministic demo product history and comparison prices.
+`FREE_PROVIDERS=true` makes paid provider keys optional. `DEMO_FALLBACK=true` keeps the app usable when direct free fetching is blocked.
 
 ## Local Setup
 
@@ -93,14 +105,22 @@ heroku addons:create scheduler:standard -a pricelens-api
 heroku config:set \
   CLIENT_ORIGIN=https://pricelens-app-3af8f2d41865.herokuapp.com \
   DEMO_FALLBACK=true \
+  FREE_PROVIDERS=true \
+  SALE_SEASON_WINDOW_DAYS=10 \
+  -a pricelens-api
+git subtree push --prefix backend heroku-api main
+```
+
+Optional paid-provider config:
+
+```bash
+heroku config:set \
   KEEPA_API_KEY=replace-me \
   SERPAPI_API_KEY=replace-me \
   SCRAPERAPI_KEY=replace-me \
   SENDGRID_API_KEY=replace-me \
   SENDGRID_FROM_EMAIL=alerts@example.com \
-  SALE_SEASON_WINDOW_DAYS=10 \
   -a pricelens-api
-git subtree push --prefix backend heroku-api main
 ```
 
 Frontend setup:
@@ -130,8 +150,8 @@ npm run alerts:check
 
 ## Notes
 
-- Amazon history uses Keepa when `KEEPA_API_KEY` is configured.
-- Shopee, Lazada, and Flipkart store real snapshots over time via ScraperAPI.
-- SerpApi powers Google Shopping comparison offers.
-- SendGrid sends alerts once a product drops to or below the saved target price.
+- Amazon history uses Keepa when `KEEPA_API_KEY` is configured; otherwise free mode stores direct snapshots over time.
+- Shopee, Lazada, and Flipkart use ScraperAPI when configured; otherwise free mode attempts direct page snapshots.
+- SerpApi powers live Google Shopping prices when configured; otherwise comparison links open retailer searches.
+- SendGrid sends alerts once a product drops to or below the saved target price; without SendGrid, the alert checker logs skipped sends.
 - Heroku Procfiles and buildpacks follow Heroku Dev Center Procfile/buildpack guidance and the Vite static deployment pattern.

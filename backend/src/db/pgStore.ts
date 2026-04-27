@@ -161,7 +161,16 @@ export class PgStore implements Store {
           INSERT INTO retailer_offers (product_id, retailer, title, price, currency, url, image_url, fetched_at)
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
           `,
-          [product.id, offer.retailer, offer.title, offer.price, offer.currency, offer.url, offer.imageUrl, offer.fetchedAt]
+          [
+            product.id,
+            offer.retailer,
+            offer.title,
+            offer.price ?? null,
+            offer.currency ?? null,
+            offer.url,
+            offer.imageUrl,
+            offer.fetchedAt
+          ]
         );
       }
       await client.query("COMMIT");
@@ -189,7 +198,7 @@ export class PgStore implements Store {
 
     const [historyResult, offersResult] = await Promise.all([
       this.pool.query("SELECT * FROM price_snapshots WHERE product_id = $1 ORDER BY observed_at ASC", [productId]),
-      this.pool.query("SELECT * FROM retailer_offers WHERE product_id = $1 ORDER BY price ASC", [productId])
+      this.pool.query("SELECT * FROM retailer_offers WHERE product_id = $1 ORDER BY price ASC NULLS LAST", [productId])
     ]);
 
     return {
@@ -286,7 +295,7 @@ function mapOffer(row: any): RetailerOffer {
   return {
     retailer: row.retailer,
     title: row.title,
-    price: toNumber(row.price),
+    price: row.price === null || row.price === undefined ? null : toNumber(row.price),
     currency: row.currency,
     url: row.url,
     imageUrl: row.image_url,

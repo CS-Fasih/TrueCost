@@ -1,6 +1,7 @@
 import { AppError } from "../errors";
 import type { AppConfig } from "../config";
 import type { RetailerOffer } from "../types";
+import { buildFreeSearchOffers } from "./freeComparison";
 
 function parsePrice(raw: unknown) {
   if (typeof raw === "number") return raw;
@@ -24,7 +25,7 @@ export async function fetchShoppingOffers(
   appConfig: AppConfig
 ): Promise<RetailerOffer[]> {
   if (!appConfig.serpApiKey) {
-    throw new AppError(503, "PROVIDER_NOT_CONFIGURED", "SerpApi key is not configured.");
+    return buildFreeSearchOffers(query);
   }
 
   const params = new URLSearchParams({

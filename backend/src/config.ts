@@ -16,6 +16,7 @@ export interface AppConfig {
   clientOrigin: string;
   databaseUrl?: string;
   demoFallback: boolean;
+  freeProviders: boolean;
   keepaApiKey?: string;
   serpApiKey?: string;
   scraperApiKey?: string;
@@ -30,6 +31,7 @@ export const config: AppConfig = {
   clientOrigin: process.env.CLIENT_ORIGIN ?? "http://localhost:5173",
   databaseUrl: process.env.DATABASE_URL,
   demoFallback: parseBoolean(process.env.DEMO_FALLBACK, process.env.NODE_ENV !== "production"),
+  freeProviders: parseBoolean(process.env.FREE_PROVIDERS, true),
   keepaApiKey: process.env.KEEPA_API_KEY,
   serpApiKey: process.env.SERPAPI_API_KEY,
   scraperApiKey: process.env.SCRAPERAPI_KEY,
