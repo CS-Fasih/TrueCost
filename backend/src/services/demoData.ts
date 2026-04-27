@@ -50,7 +50,7 @@ export function buildDemoProductResult(parsed: ParsedProductUrl): ProviderProduc
     currency,
     history,
     source: "demo",
-    messages: ["Using deterministic demo data because a live provider key is not configured."]
+    messages: ["Using deterministic demo data because live product fetching could not return current retailer data."]
   };
 }
 
